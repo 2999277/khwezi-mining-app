@@ -16,6 +16,10 @@ if "logged_in" not in st.session_state:
 st.title("⛏️ Khwezi Mining Health, Safety & Equipment Monitoring Application")
 st.markdown("*A centralized digital monitoring platform for operational decision-making.*")
 st.divider()
+# --- WORKER SAFETY AND INCIDENT DATABASES ---
+
+worker_safety = pd.read_csv("worker_safety.csv")
+safety_incidents = pd.read_csv("safety_incidents.csv")
 
 # --- THEMBI'S BACK-END LOGIC: EQUIPMENT DATABASE & MONITORING ---
 # Using the fallback dataframe so it won't crash if equipment.csv is missing
@@ -116,14 +120,134 @@ else:
         k4.metric("Critical Alerts", (equipment["Overall_Condition"] == "CRITICAL").sum(), "Action Required", delta_color="inverse")
         st.info("💡 Use the sidebar navigation menu to access specific system modules.")
 
-    # --- SAMMIE'S PLACEHOLDERS ---
+    # --- SAMMIE'S PLACEHOLDER 
     elif selected_page == "Worker Safety Data":
         st.subheader("👷 Worker Health and Safety Monitoring")
-        st.write("Placeholder ready for Sammie's worker safety database records.")
+        st.write("### Worker Safety Database")
+        st.dataframe(worker_safety, use_container_width=True)
+
+        total_workers = len(worker_safety)
+        compliant_workers = (
+            worker_safety["Compliance_Status"] == "Compliant"
+        ).sum()
+        action_required = (
+            worker_safety["Compliance_Status"] == "Action Required"
+        ).sum()
+        ppe_non_compliant = (
+            worker_safety["PPE_Status"] == "Non-Compliant"
+        ).sum()
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Workers", total_workers)
+        c2.metric("Compliant Workers", compliant_workers)
+        c3.metric("Action Required", action_required)
+        c4.metric("PPE Non-Compliant", ppe_non_compliant)
+
+        st.write("### Select Worker")
+
+        selected_worker = st.selectbox(
+            "Worker ID",
+            worker_safety["Worker_ID"].tolist()
+        )
+
+        worker = worker_safety[
+            worker_safety["Worker_ID"] == selected_worker
+        ].iloc[0]
+
+        st.write(f"Role: {worker['Role']}")
+        st.write(f"Section: {worker['Section']}")
+        st.write(f"Shift: {worker['Shift']}")
+        st.write(f"PPE Status: {worker['PPE_Status']}")
+        st.write(
+            f"Safety Training: {worker['Safety_Training_Status']}"
+        )
+        st.write(
+            f"Safety Induction: {worker['Safety_Induction_Status']}"
+        )
+        st.write(
+            f"Hazards Reported: {worker['Hazards_Reported']}"
+        )
+
+        if worker["PPE_Status"] == "Non-Compliant":
+            st.error("PPE ALERT: Worker is not PPE compliant.")
+
+        if worker["Safety_Training_Status"] == "Expired":
+            st.warning("TRAINING ALERT: Safety training has expired.")
+
+        if worker["Safety_Induction_Status"] == "Pending":
+            st.warning("INDUCTION ALERT: Safety induction is pending.")
+
+        if worker["Compliance_Status"] == "Action Required":
+            st.error("Overall Safety Status: Action Required")
+        else:
+            st.success("Overall Safety Status: Compliant")
 
     elif selected_page == "Safety Incidents":
         st.subheader("🚨 Safety Incident Database")
-        st.write("Placeholder ready for Sammie's safety incident tracking repository.")
+        st.write("### Recorded Safety Incidents")
+        st.dataframe(safety_incidents, use_container_width=True)
+
+        total_incidents = len(safety_incidents)
+        critical_incidents = (
+            safety_incidents["Severity"] == "Critical"
+        ).sum()
+        open_incidents = (
+            safety_incidents["Investigation_Status"] != "Closed"
+        ).sum()
+        total_days_lost = safety_incidents["Days_Lost"].sum()
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Incidents", total_incidents)
+        c2.metric("Critical Incidents", critical_incidents)
+        c3.metric("Unresolved Investigations", open_incidents)
+        c4.metric("Total Days Lost", total_days_lost)
+
+        st.write("### Select Incident")
+
+        selected_incident = st.selectbox(
+            "Incident ID",
+            safety_incidents["Incident_ID"].tolist()
+        )
+
+        incident = safety_incidents[
+            safety_incidents["Incident_ID"] == selected_incident
+        ].iloc[0]
+
+        st.write(f"Date: {incident['Incident_Date']}")
+        st.write(f"Worker ID: {incident['Worker_ID']}")
+        st.write(f"Section: {incident['Section']}")
+        st.write(f"Incident Type: {incident['Incident_Type']}")
+        st.write(f"Severity: {incident['Severity']}")
+        st.write(f"Days Lost: {incident['Days_Lost']}")
+        st.write(
+            f"Reported to DMRE: {incident['Reported_To_DMRE']}"
+        )
+        st.write(
+            f"Investigation Status: {incident['Investigation_Status']}"
+        )
+        st.write(
+            f"Corrective Action: {incident['Corrective_Action']}"
+        )
+
+        if incident["Severity"] == "Critical":
+            st.error(
+                "CRITICAL INCIDENT: Immediate safety attention required."
+            )
+        elif incident["Severity"] == "High":
+            st.warning(
+                "HIGH SEVERITY: Incident requires priority attention."
+            )
+        elif incident["Severity"] == "Medium":
+            st.warning(
+                "MEDIUM SEVERITY: Review corrective actions."
+            )
+        else:
+            st.info("LOW SEVERITY: Follow standard safety procedures.")
+
+        if incident["Investigation_Status"] != "Closed":
+            st.warning("Investigation has not been closed.")
+        else:
+            st.success("Investigation closed.")
 
     elif selected_page == "Risk Assessment":
         st.subheader("⚠️ Risk Assessment Matrix (Likelihood × Consequence)")
